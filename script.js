@@ -1,42 +1,61 @@
-const skills = [
-  "Attack", "Defence", "Strength", "Constitution", "Ranged", "Prayer", "Magic",
-  "Cooking", "Woodcutting", "Fletching", "Fishing", "Firemaking", "Crafting",
-  "Smithing", "Mining", "Herblore", "Agility", "Thieving", "Slayer", "Farming",
-  "Runecrafting", "Hunter", "Construction", "Summoning", "Dungeoneering",
-  "Divination", "Invention", "Archaeology", "Necromancy"
-];
+const proxy = "https://corsproxy.io/?";
+const baseUrl = "https://apps.runescape.com/runemetrics/profile/profile?user=";
 
-async function fetchData(username) {
-  const res = await fetch(`https://apps.runescape.com/runemetrics/profile/profile?user=${encodeURIComponent(username)}`);
-  const data = await res.json();
-  return data.skillvalues.map(s => s.level);
+const player1 = "Two Ts 2";
+const player2 = "Two Ts 1";
+
+async function fetchData(player) {
+  const response = await fetch(`${proxy}${baseUrl}${encodeURIComponent(player)}`);
+  if (!response.ok) throw new Error(`Failed to fetch ${player}`);
+  const data = await response.json();
+  return data.skills.reduce((acc, skill) => {
+    acc[skill.name] = skill.level;
+    return acc;
+  }, {});
 }
 
-function compareSkills(myLevels, friendLevels) {
-  const tbody = document.querySelector("#skill-table tbody");
-  tbody.innerHTML = "";
-  skills.forEach((skill, i) => {
-    const myLvl = myLevels[i];
-    const friendLvl = friendLevels[i];
-    const diff = myLvl - friendLvl;
-    const who = diff > 0 ? "You" : diff < 0 ? "Friend" : "Equal";
-
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${skill}</td>
-      <td>${myLvl}</td>
-      <td>${friendLvl}</td>
-      <td>${diff}</td>
-      <td>${who}</td>
-    `;
-    tbody.appendChild(row);
+function calculateDifference(p1, p2) {
+  const skills = Object.keys(p1);
+  return skills.map(skill => {
+    const diff = p1[skill] - p2[skill];
+    return {
+      skill,
+      p1: p1[skill],
+      p2: p2[skill],
+      diff,
+      lead: diff === 0 ? "Even" : (diff > 0 ? player1 : player2)
+    };
   });
 }
 
-async function updateTable() {
-  const myLevels = await fetchData("Two Ts 2");
-  const friendLevels = await fetchData("Two Ts 1");
-  compareSkills(myLevels, friendLevels);
+function updateTable(data) {
+  const table = document.getElementById("skills-table");
+  table.innerHTML = `
+    <tr>
+      <th>Skill</th><th>${player1}</th><th>${player2}</th><th>Difference</th><th>Who's Ahead</th>
+    </tr>`;
+  data.forEach(row => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${row.skill}</td>
+      <td>${row.p1}</td>
+      <td>${row.p2}</td>
+      <td>${row.diff}</td>
+      <td>${row.lead}</td>`;
+    table.appendChild(tr);
+  });
 }
 
-updateTable();
+async function update() {
+  try {
+    const [data1, data2] = await Promise.all([fetchData(player1), fetchData(player2)]);
+    const diff = calculateDifference(data1, data2);
+    updateTable(diff);
+  } catch (error) {
+    console.error(error);
+    document.getElementById("skills-table").innerHTML = `<tr><td colspan="5">Error loading data: ${error.message}</td></tr>`;
+  }
+}
+
+update();
+
