@@ -49,17 +49,18 @@ th, td {
 }
 
 th {
-  background-color: #2a2a2a;
-  color: #fff;
+  background-color: #222;
+  color: #eee;
 }
 
 .better {
-  background-color: #285e3c; /* Darker green */
-  color: #b6ffce;
+  background-color: #204d30; /* Dark green */
+  color: #a8f0c6;
+  font-weight: bold;
 }
 
 .worse {
-  background-color: #5c2c2c; /* Darker red */
-  color: #ffc7c7;
+  background-color: #4d2020; /* Dark red */
+  color: #f0a8a8;
+  font-weight: bold;
 }
-
