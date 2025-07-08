@@ -1,66 +1,75 @@
 const usernames = ["Two Ts 2", "Two Ts 1"];
-const proxy = "https://corsproxy.io/?";
-const baseUrl = "https://apps.runescape.com/runemetrics/profile/profile?user=";
+const baseUrl = "https://corsproxy.io/?https://apps.runescape.com/runemetrics/profile/profile?user=";
 
+// Fetch and process data
 async function fetchData(username) {
-  try {
-    const url = proxy + encodeURIComponent(baseUrl + username);
-    const response = await fetch(url);
-    const data = await response.json();
+  const response = await fetch(baseUrl + encodeURIComponent(username));
+  const data = await response.json();
 
-    if (!data.skillvalues || !Array.isArray(data.skillvalues)) {
-      console.warn(`Invalid skill data for ${username}`, data);
-      return {};
-    }
-
-    return data.skillvalues.reduce((acc, skill) => {
-      acc[skill.name] = skill.level;
-      return acc;
-    }, {});
-  } catch (err) {
-    console.error("Failed to fetch", username, err);
-    return {};
+  if (!data || !Array.isArray(data.skillvalues)) {
+    throw new Error(`Invalid data for ${username}`);
   }
+
+  const skills = {};
+  for (const skill of data.skillvalues) {
+    if (skill.level > 1) {
+      skills[skill.name] = skill.level;
+    }
+  }
+
+  return skills;
 }
 
+// Get difference and who's ahead
 function getDifference(a, b) {
   const diff = a - b;
-  const who = diff === 0 ? "Equal" : diff > 0 ? "Two Ts 2" : "Two Ts 1";
+  const who = diff === 0 ? "Equal" : (diff > 0 ? usernames[0] : usernames[1]);
   return [Math.abs(diff), who];
 }
 
-async function updateTable() {
-  const [userA, userB] = await Promise.all(usernames.map(fetchData));
-  const tableBody = document.querySelector("#skill-table tbody");
-  tableBody.innerHTML = "";
+// Update the table
+async function update() {
+  const table = document.querySelector("#skill-table tbody");
+  table.innerHTML = "";
 
-  const skills = new Set([...Object.keys(userA), ...Object.keys(userB)]);
-  for (const skill of skills) {
-    const levelA = userA[skill] ?? 0;
-    const levelB = userB[skill] ?? 0;
-    const [diff, who] = getDifference(levelA, levelB);
+  try {
+    const [userAData, userBData] = await Promise.all(usernames.map(fetchData));
 
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${skill}</td>
-      <td>${levelA}</td>
-      <td>${levelB}</td>
-      <td>${diff}</td>
-      <td class="${who === "Equal" ? "" : who === "Two Ts 2" ? "better" : "worse"}">${who}</td>
-    `;
-    tableBody.appendChild(row);
+    const allSkills = new Set([...Object.keys(userAData), ...Object.keys(userBData)]);
+    allSkills.forEach(skill => {
+      const a = userAData[skill] || 1;
+      const b = userBData[skill] || 1;
+      const [diff, who] = getDifference(a, b);
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${skill}</td>
+        <td>${a}</td>
+        <td>${b}</td>
+        <td>${diff}</td>
+        <td>${who}</td>
+      `;
+      table.appendChild(row);
+    });
+  } catch (err) {
+    console.error("Update failed:", err);
   }
 }
 
-document.getElementById("refresh").addEventListener("click", updateTable);
+// Hourly auto-refresh
+function setupAutoRefresh() {
+  const now = new Date();
+  const delay = (60 - now.getMinutes()) * 60 * 1000 - now.getSeconds() * 1000;
+  setTimeout(() => {
+    update();
+    setInterval(update, 60 * 60 * 1000); // every hour
+  }, delay);
+}
 
-// Refresh at the top of every hour
-const now = new Date();
-const msUntilNextHour = (60 - now.getMinutes()) * 60 * 1000 - now.getSeconds() * 1000;
-setTimeout(() => {
-  updateTable();
-  setInterval(updateTable, 60 * 60 * 1000);
-}, msUntilNextHour);
-
-// Initial fetch
-updateTable();
+// Manual refresh
+document.addEventListener("DOMContentLoaded", () => {
+  const button = document.getElementById("refresh");
+  if (button) button.addEventListener("click", update);
+  update();
+  setupAutoRefresh();
+});
