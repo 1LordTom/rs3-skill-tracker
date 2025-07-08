@@ -3,14 +3,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const proxy = "https://corsproxy.io/?";
   const baseUrl = "https://apps.runescape.com/runemetrics/profile/profile?user=";
 
+  const refreshIntervalMs = 60 * 60 * 1000; // 1 hour
+
   async function fetchData(username) {
-    const url = proxy + encodeURIComponent(baseUrl + username);
-    const response = await fetch(url);
+    const response = await fetch(proxy + encodeURIComponent(baseUrl + username));
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ${username}`);
+    }
+
     const data = await response.json();
 
     if (!data.skillvalues || !Array.isArray(data.skillvalues)) {
-      console.error(`Invalid or missing data for ${username}`, data);
-      return {};
+      throw new Error(`Invalid or missing skill data for ${username}`);
     }
 
     return data.skillvalues.reduce((acc, skill) => {
@@ -27,50 +31,53 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function updateTable() {
     try {
-      const [userData, userData2] = await Promise.all(usernames.map(fetchData));
+      const [user1Data, user2Data] = await Promise.all(usernames.map(fetchData));
       const tableBody = document.querySelector("#skill-table tbody");
-      if (!tableBody) return;
 
-      tableBody.innerHTML = "";
+      if (!tableBody) {
+        console.error("Could not find #skill-table tbody in DOM.");
+        return;
+      }
 
-      const allSkills = new Set([...Object.keys(userData), ...Object.keys(userData2)]);
-      for (const skill of allSkills) {
-        const level1 = userData[skill] || 0;
-        const level2 = userData2[skill] || 0;
-        const [diff, who] = getDifference(level1, level2);
+      tableBody.innerHTML = ""; // Clear previous
+
+      const allSkills = Object.keys(user1Data);
+      allSkills.forEach(skill => {
+        const u1 = user1Data[skill] || 0;
+        const u2 = user2Data[skill] || 0;
+        const [diff, who] = getDifference(u1, u2);
 
         const row = document.createElement("tr");
         row.innerHTML = `
           <td>${skill}</td>
-          <td class="${level1 > level2 ? 'better' : level1 < level2 ? 'worse' : ''}">${level1}</td>
-          <td class="${level2 > level1 ? 'better' : level2 < level1 ? 'worse' : ''}">${level2}</td>
+          <td>${u1}</td>
+          <td>${u2}</td>
           <td>${diff}</td>
-          <td>${who}</td>
+          <td class="${who === "Equal" ? "" : who === "Two Ts 2" ? "better" : "worse"}">${who}</td>
         `;
         tableBody.appendChild(row);
-      }
+      });
     } catch (err) {
-      console.error("Failed to update table:", err);
+      console.error(err.message);
     }
   }
 
-  // Manual refresh button
-  const refreshBtn = document.getElementById("refresh-btn");
-  if (refreshBtn) {
-    refreshBtn.addEventListener("click", updateTable);
+  // Manual Refresh Button
+  const refreshButton = document.getElementById("refresh-btn");
+  if (refreshButton) {
+    refreshButton.addEventListener("click", updateTable);
+  } else {
+    console.warn("Refresh button not found");
   }
 
-  // Schedule hourly update at the top of each hour
-  function scheduleHourlyRefresh() {
-    const now = new Date();
-    const delay = (60 - now.getMinutes()) * 60 * 1000 - now.getSeconds() * 1000 - now.getMilliseconds();
+  // Auto Refresh at top of each hour
+  const now = new Date();
+  const msToNextHour =
+    (60 - now.getMinutes()) * 60 * 1000 - now.getSeconds() * 1000 - now.getMilliseconds();
+  setTimeout(() => {
+    updateTable();
+    setInterval(updateTable, refreshIntervalMs);
+  }, msToNextHour);
 
-    setTimeout(() => {
-      updateTable();
-      setInterval(updateTable, 60 * 60 * 1000);
-    }, delay);
-  }
-
-  updateTable();
-  scheduleHourlyRefresh();
+  updateTable(); // Initial load
 });
