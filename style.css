@@ -67,7 +67,7 @@ th {
   color: #ffe0e0; /* Light readable text */
 }
 
-/* NEW - added for logo styling */
+/* Header layout */
 .header {
   display: flex;
   align-items: center;
@@ -80,3 +80,14 @@ th {
   width: 140px;
   height: 140px;
 }
+
+.logo-wrapper {
+  flex-shrink: 0;
+  text-align: left;
+}
+
+.title-wrapper {
+  flex-grow: 1;
+  text-align: center;
+}
+
