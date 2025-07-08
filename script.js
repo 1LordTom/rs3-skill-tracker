@@ -1,58 +1,68 @@
-const usernames = {
-  you: "Two Ts 2",
-  friend: "Two Ts 1"
-};
+const proxy = "https://api.allorigins.win/raw?url=";
+const user1 = "Two%20Ts%201";
+const user2 = "Two%20Ts%202";
 
-const skillTable = document.getElementById("skill-table").querySelector("tbody");
+const skillOrder = [
+  "Attack", "Defence", "Strength", "Constitution", "Ranged", "Prayer", "Magic", "Cooking", "Woodcutting",
+  "Fletching", "Fishing", "Firemaking", "Crafting", "Smithing", "Mining", "Herblore", "Agility", "Thieving",
+  "Slayer", "Farming", "Runecrafting", "Hunter", "Construction", "Summoning", "Dungeoneering", "Divination",
+  "Invention", "Archaeology", "Necromancy"
+];
 
-async function fetchData(user) {
-  const url = `https://corsproxy.io/?https://apps.runescape.com/runemetrics/profile/profile?user=${encodeURIComponent(user)}`;
-  const res = await fetch(url);
-  const data = await res.json();
-  return data.skillvalues.reduce((acc, skill) => {
-    acc[skill.id] = skill.level;
+async function fetchData(username) {
+  const url = `${proxy}https://apps.runescape.com/runemetrics/profile/profile?user=${username}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Failed to fetch ${username}`);
+  const data = await response.json();
+  return data.skills.reduce((acc, skill) => {
+    acc[skill.name] = skill.level;
     return acc;
   }, {});
 }
 
-const skillNames = [
-  "Attack", "Defence", "Strength", "Constitution", "Ranged", "Prayer", "Magic", "Cooking",
-  "Woodcutting", "Fletching", "Fishing", "Firemaking", "Crafting", "Smithing", "Mining",
-  "Herblore", "Agility", "Thieving", "Slayer", "Farming", "Runecrafting", "Hunter",
-  "Construction", "Summoning", "Dungeoneering", "Divination", "Invention", "Archaeology", "Necromancy"
-];
+function generateTable(data1, data2) {
+  const tbody = document.getElementById("skill-table-body");
+  tbody.innerHTML = "";
+
+  skillOrder.forEach(skill => {
+    const level1 = data1[skill] || 0;
+    const level2 = data2[skill] || 0;
+    const diff = level2 - level1;
+    const ahead = diff > 0 ? "Two Ts 2" : diff < 0 ? "Two Ts 1" : "Equal";
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${skill}</td>
+      <td class="${level2 > level1 ? 'better' : level2 < level1 ? 'worse' : ''}">${level2}</td>
+      <td class="${level1 > level2 ? 'better' : level1 < level2 ? 'worse' : ''}">${level1}</td>
+      <td>${Math.abs(diff)}</td>
+      <td>${ahead}</td>
+    `;
+    tbody.appendChild(row);
+  });
+}
 
 async function update() {
   try {
-    const [youData, friendData] = await Promise.all([
-      fetchData(usernames.you),
-      fetchData(usernames.friend)
-    ]);
-
-    skillTable.innerHTML = "";
-    skillNames.forEach((name, id) => {
-      const youLvl = youData[id] ?? 0;
-      const friendLvl = friendData[id] ?? 0;
-      const diff = youLvl - friendLvl;
-      const winner = diff === 0 ? "-" : diff > 0 ? "You" : "Friend";
-
-      const row = document.createElement("tr");
-      if (winner === "You") row.classList.add("you");
-      if (winner === "Friend") row.classList.add("friend");
-
-      row.innerHTML = `
-        <td>${name}</td>
-        <td>${youLvl}</td>
-        <td>${friendLvl}</td>
-        <td>${Math.abs(diff)}</td>
-        <td>${winner}</td>
-      `;
-      skillTable.appendChild(row);
-    });
+    const [data1, data2] = await Promise.all([fetchData(user1), fetchData(user2)]);
+    generateTable(data1, data2);
   } catch (err) {
-    console.error("Error updating table:", err);
-    skillTable.innerHTML = `<tr><td colspan="5">Failed to fetch data. Please try again later.</td></tr>`;
+    console.error(err);
+    document.getElementById("skill-table-body").innerHTML = `<tr><td colspan="5">Error: ${err.message}</td></tr>`;
   }
 }
 
-update();
+function scheduleHourlyRefresh() {
+  const now = new Date();
+  const delay = (60 - now.getMinutes()) * 60 * 1000 - now.getSeconds() * 1000;
+  setTimeout(() => {
+    update();
+    setInterval(update, 60 * 60 * 1000); // every hour
+  }, delay);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  update();
+  document.getElementById("manual-refresh").addEventListener("click", update);
+  scheduleHourlyRefresh();
+});
