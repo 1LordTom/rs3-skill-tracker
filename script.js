@@ -1,31 +1,26 @@
 const usernames = ["Two Ts 2", "Two Ts 1"];
-const proxyBase = "https://api.allorigins.win/raw?url=";
+const proxy = "https://corsproxy.io/?";
 const baseUrl = "https://apps.runescape.com/runemetrics/profile/profile?user=";
 
-let lastFetchTime = 0;
-const fetchDelay = 10000; // 10 seconds between calls
-
 async function fetchData(username) {
-  const now = Date.now();
-  if (now - lastFetchTime < fetchDelay) {
-    await new Promise((res) => setTimeout(res, fetchDelay - (now - lastFetchTime)));
+  try {
+    const url = proxy + encodeURIComponent(baseUrl + username);
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data.skillvalues || !Array.isArray(data.skillvalues)) {
+      console.warn(`Invalid skill data for ${username}`, data);
+      return {};
+    }
+
+    return data.skillvalues.reduce((acc, skill) => {
+      acc[skill.name] = skill.level;
+      return acc;
+    }, {});
+  } catch (err) {
+    console.error("Failed to fetch", username, err);
+    return {};
   }
-
-  const encodedUrl = encodeURIComponent(baseUrl + username);
-  const fullUrl = proxyBase + encodedUrl;
-
-  const response = await fetch(fullUrl);
-  if (!response.ok) throw new Error("Failed to fetch " + username);
-
-  const data = await response.json();
-  lastFetchTime = Date.now();
-
-  if (!data.skillvalues) throw new Error("Invalid data for " + username);
-
-  return data.skillvalues.reduce((acc, skill) => {
-    acc[skill.name] = skill.level;
-    return acc;
-  }, {});
 }
 
 function getDifference(a, b) {
@@ -35,39 +30,37 @@ function getDifference(a, b) {
 }
 
 async function updateTable() {
-  try {
-    const [user1, user2] = await Promise.all(usernames.map(fetchData));
-    const tableBody = document.querySelector("#skill-table tbody");
-    tableBody.innerHTML = "";
+  const [userA, userB] = await Promise.all(usernames.map(fetchData));
+  const tableBody = document.querySelector("#skill-table tbody");
+  tableBody.innerHTML = "";
 
-    for (const skill in user1) {
-      const row = document.createElement("tr");
+  const skills = new Set([...Object.keys(userA), ...Object.keys(userB)]);
+  for (const skill of skills) {
+    const levelA = userA[skill] ?? 0;
+    const levelB = userB[skill] ?? 0;
+    const [diff, who] = getDifference(levelA, levelB);
 
-      const diff = getDifference(user1[skill], user2[skill]);
-
-      row.innerHTML = `
-        <td>${skill}</td>
-        <td>${user1[skill]}</td>
-        <td>${user2[skill]}</td>
-        <td>${diff[0]}</td>
-        <td>${diff[1]}</td>
-      `;
-
-      row.className = diff[1] === "Equal" ? "" : diff[1] === "Two Ts 2" ? "better" : "worse";
-      tableBody.appendChild(row);
-    }
-  } catch (error) {
-    console.error(error);
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${skill}</td>
+      <td>${levelA}</td>
+      <td>${levelB}</td>
+      <td>${diff}</td>
+      <td class="${who === "Equal" ? "" : who === "Two Ts 2" ? "better" : "worse"}">${who}</td>
+    `;
+    tableBody.appendChild(row);
   }
 }
 
 document.getElementById("refresh").addEventListener("click", updateTable);
 
 // Refresh at the top of every hour
-const msToHour = 3600000 - (Date.now() % 3600000);
+const now = new Date();
+const msUntilNextHour = (60 - now.getMinutes()) * 60 * 1000 - now.getSeconds() * 1000;
 setTimeout(() => {
   updateTable();
-  setInterval(updateTable, 3600000);
-}, msToHour);
+  setInterval(updateTable, 60 * 60 * 1000);
+}, msUntilNextHour);
 
-updateTable(); // Initial load
+// Initial fetch
+updateTable();
