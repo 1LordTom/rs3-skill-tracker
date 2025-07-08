@@ -66,3 +66,17 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("manual-refresh").addEventListener("click", update);
   scheduleHourlyRefresh();
 });
+async function fetchData(username) {
+    const response = await fetch(proxy + encodeURIComponent(baseUrl + username));
+    const data = await response.json();
+
+    if (!data.skillvalues) {
+        throw new Error(`Missing skillvalues for ${username}: ${JSON.stringify(data)}`);
+    }
+
+    return data.skillvalues.reduce((acc, skill) => {
+        acc[skill.name] = skill.level;
+        return acc;
+    }, {});
+}
+
