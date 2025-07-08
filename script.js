@@ -1,82 +1,67 @@
-const proxy = "https://api.allorigins.win/raw?url=";
-const user1 = "Two%20Ts%201";
-const user2 = "Two%20Ts%202";
-
-const skillOrder = [
-  "Attack", "Defence", "Strength", "Constitution", "Ranged", "Prayer", "Magic", "Cooking", "Woodcutting",
-  "Fletching", "Fishing", "Firemaking", "Crafting", "Smithing", "Mining", "Herblore", "Agility", "Thieving",
-  "Slayer", "Farming", "Runecrafting", "Hunter", "Construction", "Summoning", "Dungeoneering", "Divination",
-  "Invention", "Archaeology", "Necromancy"
-];
+const usernames = ["Two Ts 2", "Two Ts 1"];
+const proxy = "https://corsproxy.io/?";
+const baseUrl = "https://apps.runescape.com/runemetrics/profile/profile?user=";
 
 async function fetchData(username) {
-  const url = `${proxy}https://apps.runescape.com/runemetrics/profile/profile?user=${username}`;
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Failed to fetch ${username}`);
+  const response = await fetch(proxy + encodeURIComponent(baseUrl + username));
   const data = await response.json();
-  return data.skills.reduce((acc, skill) => {
+
+  if (!data.skillvalues || !Array.isArray(data.skillvalues)) {
+    console.error(`Missing or invalid skillvalues for ${username}`, data);
+    return {};
+  }
+
+  return data.skillvalues.reduce((acc, skill) => {
     acc[skill.name] = skill.level;
     return acc;
   }, {});
 }
 
-function generateTable(data1, data2) {
-  const tbody = document.getElementById("skill-table-body");
-  tbody.innerHTML = "";
-
-  skillOrder.forEach(skill => {
-    const level1 = data1[skill] || 0;
-    const level2 = data2[skill] || 0;
-    const diff = level2 - level1;
-    const ahead = diff > 0 ? "Two Ts 2" : diff < 0 ? "Two Ts 1" : "Equal";
-
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${skill}</td>
-      <td class="${level2 > level1 ? 'better' : level2 < level1 ? 'worse' : ''}">${level2}</td>
-      <td class="${level1 > level2 ? 'better' : level1 < level2 ? 'worse' : ''}">${level1}</td>
-      <td>${Math.abs(diff)}</td>
-      <td>${ahead}</td>
-    `;
-    tbody.appendChild(row);
-  });
+function getDifference(a, b) {
+  const diff = a - b;
+  const who = diff === 0 ? "Equal" : diff > 0 ? "Two Ts 2" : "Two Ts 1";
+  return [Math.abs(diff), who];
 }
 
-async function update() {
+async function updateTable() {
   try {
-    const [data1, data2] = await Promise.all([fetchData(user1), fetchData(user2)]);
-    generateTable(data1, data2);
+    const [userData, userData2] = await Promise.all(usernames.map(fetchData));
+    const tableBody = document.querySelector("#skill-table tbody");
+    tableBody.innerHTML = "";
+
+    const skills = new Set([...Object.keys(userData), ...Object.keys(userData2)]);
+    skills.forEach((skill) => {
+      const level1 = userData[skill] || 0;
+      const level2 = userData2[skill] || 0;
+      const [diff, who] = getDifference(level1, level2);
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${skill}</td>
+        <td class="${level1 > level2 ? "better" : level1 < level2 ? "worse" : ""}">${level1}</td>
+        <td class="${level2 > level1 ? "better" : level2 < level1 ? "worse" : ""}">${level2}</td>
+        <td>${diff}</td>
+        <td>${who}</td>
+      `;
+      tableBody.appendChild(row);
+    });
   } catch (err) {
-    console.error(err);
-    document.getElementById("skill-table-body").innerHTML = `<tr><td colspan="5">Error: ${err.message}</td></tr>`;
+    console.error("Error updating table:", err);
   }
 }
 
+// Refresh manually
+document.getElementById("refresh-btn").addEventListener("click", updateTable);
+
+// Refresh every hour at start of hour
 function scheduleHourlyRefresh() {
   const now = new Date();
-  const delay = (60 - now.getMinutes()) * 60 * 1000 - now.getSeconds() * 1000;
+  const msUntilNextHour = (60 - now.getMinutes()) * 60 * 1000 - now.getSeconds() * 1000 - now.getMilliseconds();
   setTimeout(() => {
-    update();
-    setInterval(update, 60 * 60 * 1000); // every hour
-  }, delay);
+    updateTable();
+    setInterval(updateTable, 60 * 60 * 1000);
+  }, msUntilNextHour);
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  update();
-  document.getElementById("manual-refresh").addEventListener("click", update);
-  scheduleHourlyRefresh();
-});
-async function fetchData(username) {
-    const response = await fetch(proxy + encodeURIComponent(baseUrl + username));
-    const data = await response.json();
-
-    if (!data.skillvalues) {
-        throw new Error(`Missing skillvalues for ${username}: ${JSON.stringify(data)}`);
-    }
-
-    return data.skillvalues.reduce((acc, skill) => {
-        acc[skill.name] = skill.level;
-        return acc;
-    }, {});
-}
-
+updateTable();
+scheduleHourlyRefresh();
