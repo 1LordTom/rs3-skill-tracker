@@ -15,7 +15,6 @@
   <!-- CSS -->
   <link rel="stylesheet" href="style.css" />
 
-  <!-- Tracker Styles -->
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -25,21 +24,28 @@
       text-align: center;
     }
 
-    img.logo {
-      display: block;
-      margin: 0 auto 10px;
-      width: 64px;
-      height: 64px;
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .logo {
+      width: 100px;
+      height: 100px;
     }
 
     h1 {
       color: #fff;
-      margin-bottom: 0.2em;
+      margin: 0;
+      font-size: 2rem;
     }
 
     p {
       color: #ccc;
-      margin-top: 0;
+      margin-top: 0.3rem;
     }
 
     button {
@@ -79,21 +85,26 @@
     }
 
     .better {
-      background-color: #c0f7c9; /* Light green */
+      background-color: #c0f7c9;
       color: #000;
     }
 
     .worse {
-      background-color: #f6c6cb; /* Light red */
+      background-color: #f6c6cb;
       color: #000;
     }
   </style>
 </head>
 <body>
-  <img src="favicon.svg" alt="RuneScape Logo" class="logo" />
-  <h1>RuneScape Skill Tracker</h1>
-  <p>Comparing: <strong>Two Ts 2</strong> vs <strong>Two Ts 1</strong></p>
-  <button id="refresh">🔄 Refresh Now</button>
+  <div class="header">
+    <img src="favicon.svg" alt="RuneScape Logo" class="logo" />
+    <div>
+      <h1>RuneScape Skill Tracker</h1>
+      <p>Comparing: <strong>Two Ts 2</strong> vs <strong>Two Ts 1</strong></p>
+      <button id="refresh">🔄 Refresh Now</button>
+    </div>
+  </div>
+
   <table id="skill-table">
     <thead>
       <tr>
@@ -106,6 +117,7 @@
     </thead>
     <tbody></tbody>
   </table>
+
   <script src="script.js"></script>
 </body>
 </html>
