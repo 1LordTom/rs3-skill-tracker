@@ -1,13 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RuneScape Skill Tracker</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 6px 12px;
+      font-size: 14px;
     }
     table {
       width: 100%;
@@ -23,21 +28,20 @@
       background-color: #f4f4f4;
     }
     .better {
-      background-color: #d4f4da;
+      background-color: #d4edda;
     }
     .worse {
       background-color: #f8d7da;
     }
-    #refresh-btn {
-      margin-top: 10px;
-      padding: 8px 16px;
-    }
   </style>
 </head>
 <body>
+
   <h1>RuneScape Skill Tracker</h1>
   <p>Comparing: <strong>Two Ts 2</strong> vs <strong>Two Ts 1</strong></p>
-  <button id="refresh-btn">Manual Refresh</button>
+
+  <button id="refresh-btn">🔁 Refresh Now</button>
+
   <table id="skill-table">
     <thead>
       <tr>
@@ -48,8 +52,11 @@
         <th>Who's Ahead</th>
       </tr>
     </thead>
-    <tbody></tbody>
+    <tbody>
+      <!-- Skill rows will be inserted here by script.js -->
+    </tbody>
   </table>
+
   <script src="script.js"></script>
 </body>
 </html>
