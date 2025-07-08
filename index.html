@@ -9,11 +9,6 @@
       font-family: Arial, sans-serif;
       padding: 20px;
     }
-    button {
-      margin-top: 10px;
-      padding: 6px 12px;
-      font-size: 14px;
-    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -33,14 +28,18 @@
     .worse {
       background-color: #f8d7da;
     }
+    #refresh-btn {
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
-
   <h1>RuneScape Skill Tracker</h1>
   <p>Comparing: <strong>Two Ts 2</strong> vs <strong>Two Ts 1</strong></p>
-
-  <button id="refresh-btn">🔁 Refresh Now</button>
+  <button id="refresh-btn">🔄 Refresh Now</button>
 
   <table id="skill-table">
     <thead>
@@ -53,7 +52,7 @@
       </tr>
     </thead>
     <tbody>
-      <!-- Skill rows will be inserted here by script.js -->
+      <!-- Populated by script.js -->
     </tbody>
   </table>
 
